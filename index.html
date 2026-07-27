@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Japan · August 2026</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Japan">
+<meta name="theme-color" content="#F5F5F7">
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ======================= first-run setup ======================= -->
+<div class="setup hidden" id="setup">
+  <h1>Japan</h1>
+  <p class="lede">This app keeps the itinerary in your private GitHub repo. Paste
+  a token once and this device is set up for good.</p>
+
+  <div class="card">
+    <ol>
+      <li>Open <strong>github.com/settings/personal-access-tokens/new</strong></li>
+      <li>Under <strong>Repository access</strong>, choose <em>Only select repositories</em>
+          and pick <code>japan-calendar</code></li>
+      <li>Under <strong>Permissions → Repository permissions</strong>, set
+          <code>Contents</code> to <strong>Read and write</strong></li>
+      <li>Set an expiry that outlasts the trip, generate, and copy the token</li>
+    </ol>
+
+    <a class="linkbtn" id="tokenlink"
+       href="https://github.com/settings/personal-access-tokens/new"
+       target="_blank" rel="noopener">Open GitHub token settings →</a>
+
+    <div class="field">
+      <label for="tokenin">Token</label>
+      <input type="text" id="tokenin" placeholder="github_pat_…"
+             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <button class="bigbtn" id="tokensave">Connect</button>
+    <p class="err" id="tokenerr"></p>
+  </div>
+</div>
+
+<!-- ======================= the trip sheet ======================= -->
+<div class="wrap hidden" id="app">
+
+  <header class="hero">
+    <div>
+      <h1 id="tripTitle">Japan</h1>
+      <p class="dates" id="tripDates"></p>
+      <button class="sync" id="sync" data-state="ok" style="margin-top:10px">
+        <span class="dot"></span><span id="syncText">Synced</span>
+      </button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <section class="notice hidden" id="notice"></section>
+
+  <section class="legs" id="legs"></section>
+
+  <nav class="bar" aria-label="Filter the itinerary">
+    <div class="seg" id="filters">
+      <button class="fbtn" data-f="all" aria-pressed="true">All</button>
+      <button class="fbtn" data-f="travel" aria-pressed="false"><span class="sw" style="background:#0071E3"></span>Travel</button>
+      <button class="fbtn" data-f="stay" aria-pressed="false"><span class="sw" style="background:#8E8E93"></span>Hotels</button>
+      <button class="fbtn" data-f="eat" aria-pressed="false"><span class="sw" style="background:#D2453B"></span>Eat</button>
+      <button class="fbtn" data-f="drink" aria-pressed="false"><span class="sw" style="background:#8944AB"></span>Drink</button>
+      <button class="fbtn" data-f="see" aria-pressed="false"><span class="sw" style="background:#17876C"></span>See</button>
+      <button class="fbtn" data-f="shop" aria-pressed="false"><span class="sw" style="background:#C2306B"></span>Shop</button>
+      <button class="fbtn" data-f="book" aria-pressed="false"><span class="sw" style="background:#C77700"></span>To book</button>
+      <button class="fbtn" data-f="tentative" aria-pressed="false">Teddy tentative</button>
+      <button class="fbtn" data-f="locked" aria-pressed="false">Locked</button>
+    </div>
+  </nav>
+
+  <section class="days card" id="days"></section>
+
+  <section class="board card hidden" id="board"></section>
+
+  <section class="foot card hidden" id="foot"></section>
+
+</div>
+
+<!-- ======================= add button ======================= -->
+<button class="fab hidden" id="fab" aria-label="Add an event">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+       stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<!-- ======================= place sheet ======================= -->
+<div class="scrim" id="mapscrim" role="dialog" aria-modal="true" aria-labelledby="mapname">
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <h3 id="mapname">Place</h3>
+      <p id="mapaddr">Address</p>
+    </div>
+    <div class="sheet-acts" id="mapacts">
+      <a class="act apple" id="actapple" href="#" target="_blank" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="2.6"/></svg></span>Open in Apple Maps</a>
+      <a class="act google" id="actgoogle" href="#" target="_blank" rel="noopener">
+        <span class="ico"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="2.6"/></svg></span>Open in Google Maps</a>
+      <button class="act copy" id="actcopy" type="button">
+        <span class="ico"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg></span><span id="copytext">Copy address</span></button>
+      <button class="act" id="actedit" type="button">
+        <span class="ico" style="background:var(--label3)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.4 2.4 0 0 0-3.4-3.4L4.6 16.6z"/></svg></span>Edit this entry</button>
+    </div>
+    <div class="sheet-foot">
+      <button class="act cancel" id="actcancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= editor sheet ======================= -->
+<div class="bscrim" id="bscrim"></div>
+<div class="bsheet" id="editor" role="dialog" aria-modal="true" aria-labelledby="edtitle">
+  <div class="grab"></div>
+  <div class="bhead">
+    <button class="tbtn" id="edcancel">Cancel</button>
+    <h3 id="edtitle">New event</h3>
+    <button class="tbtn strong" id="edsave">Save</button>
+  </div>
+  <div class="bbody">
+
+    <div class="field">
+      <label for="f-title">Title</label>
+      <input type="text" id="f-title" placeholder="Where you are going" autocapitalize="words">
+    </div>
+
+    <div class="field">
+      <label>Category</label>
+      <div class="chips" id="f-cat">
+        <button class="chip e-travel" data-v="travel" aria-pressed="false"><span class="sw"></span>Travel</button>
+        <button class="chip e-stay"   data-v="stay"   aria-pressed="false"><span class="sw"></span>Hotel</button>
+        <button class="chip e-eat"    data-v="eat"    aria-pressed="false"><span class="sw"></span>Eat</button>
+        <button class="chip e-drink"  data-v="drink"  aria-pressed="false"><span class="sw"></span>Drink</button>
+        <button class="chip e-see"    data-v="see"    aria-pressed="false"><span class="sw"></span>See</button>
+        <button class="chip e-shop"   data-v="shop"   aria-pressed="false"><span class="sw"></span>Shop</button>
+        <button class="chip e-book"   data-v="book"   aria-pressed="false"><span class="sw"></span>To book</button>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="field">
+        <label for="f-date">Day</label>
+        <select id="f-date"></select>
+      </div>
+      <div class="field">
+        <label for="f-kicker">Type</label>
+        <input type="text" id="f-kicker" placeholder="Dinner" autocapitalize="words">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-time">Time</label>
+      <input type="text" id="f-time" placeholder="7:30 PM, or Evening">
+      <div class="srow">
+        <div>
+          <div class="lbl">Fixed time</div>
+          <div class="sub">Bold it. Use for anything you would be late for.</div>
+        </div>
+        <button class="sw-toggle" id="f-hard" role="switch" aria-checked="false"></button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Status</label>
+      <div class="chips" id="f-status">
+        <button class="chip" data-v="locked"    aria-pressed="false" style="--c:var(--see);--tint:var(--see-t)"><span class="sw"></span>Locked</button>
+        <button class="chip" data-v="tentative" aria-pressed="false" style="--c:var(--book);--tint:var(--book-t)"><span class="sw"></span>Tentative</button>
+        <button class="chip" data-v="todo"      aria-pressed="false" style="--c:var(--eat);--tint:var(--eat-t)"><span class="sw"></span>To book</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-place">Address for maps</label>
+      <input type="text" id="f-place" placeholder="Name, neighbourhood, city">
+      <div class="hint">Leave empty and the entry simply will not be tappable.</div>
+    </div>
+
+    <div class="field">
+      <label for="f-note">Note</label>
+      <textarea id="f-note" placeholder="What it is, why it is here, anything to remember."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Tags</label>
+      <div id="f-pills"></div>
+      <button class="addlink" id="f-addpill">+ Add a tag</button>
+      <div class="hint">Short flags like “Cash only”, “Res 2022”, “Not booked”.</div>
+    </div>
+
+    <div class="field" id="f-deletewrap">
+      <button class="tbtn danger" id="f-delete"
+              style="padding:12px 0;font-weight:600">Delete this event</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
