@@ -103,14 +103,14 @@ export function renderStats() {
   const ev = state.data.events;
   const count = (s) => ev.filter((e) => e.status === s).length;
 
-  // "Open" means outstanding bookings, which live on the board rather than in
-  // the day list. The original sheet had this typed in by hand and it had
-  // drifted; counting it keeps it honest.
-  const open =
-    (state.data.board?.groups || []).reduce(
-      (n, g) => n + g.rows.filter((r) => r.status !== "done").length,
-      0
-    ) + count("todo");
+  // "Open" means outstanding bookings, which are tracked on the board. Counting
+  // the to-book entries as well would double up, since an open item generally
+  // appears in both places. The original sheet had this typed in by hand and it
+  // had drifted; counting it keeps it honest.
+  const open = (state.data.board?.groups || []).reduce(
+    (n, g) => n + g.rows.filter((r) => r.status !== "done").length,
+    0
+  );
 
   document.getElementById("stats").innerHTML = `
     <div class="stat"><b>${count("locked")}</b><span>Locked</span></div>
