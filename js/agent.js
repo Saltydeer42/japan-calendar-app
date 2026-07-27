@@ -203,13 +203,39 @@ export const TOOLS = [
       type: "object",
       properties: {
         id: { type: "string", description: "The [id] of the entry." },
-        title: { type: "string" },
-        time: { type: "string" },
-        timeHard: { type: "boolean" },
-        status: { type: "string", enum: ["locked", "tentative", "todo"] },
-        kicker: { type: "string" },
-        place: { type: "string" },
-        note: { type: "string" },
+        title: {
+          type: "string",
+          description: "New name. Omit unless the name itself is changing.",
+        },
+        time: {
+          type: "string",
+          description: "New time, e.g. '8:30 PM' or 'Evening'. Omit to leave it.",
+        },
+        timeHard: {
+          type: "boolean",
+          description:
+            "Whether the time is fixed. Set true when a reservation pins it.",
+        },
+        status: {
+          type: "string",
+          enum: ["locked", "tentative", "todo"],
+          description:
+            "Set 'locked' once something is actually reserved — that is the most useful edit here.",
+        },
+        kicker: {
+          type: "string",
+          description: "New short type label, e.g. Dinner, Bar, Train.",
+        },
+        place: {
+          type: "string",
+          description:
+            "New address for the maps link. Only if you genuinely have it.",
+        },
+        note: {
+          type: "string",
+          description:
+            "Replaces the existing note in full, so restate anything still relevant.",
+        },
         reason: { type: "string", description: "One short line for the user." },
       },
       required: ["id", "reason"],
