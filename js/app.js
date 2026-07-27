@@ -18,7 +18,7 @@ import {
 import { renderAll, renderDays, renderStats } from "./render.js";
 import { initDrag, swallowedClick } from "./drag.js";
 import { initEditor, openEditor, editorOpen } from "./editor.js";
-import { initChat } from "./chat.js";
+import { initChat, lockViewport, unlockViewport } from "./chat.js";
 import { haptic } from "./haptics.js";
 
 const el = (id) => document.getElementById(id);
@@ -297,9 +297,11 @@ async function boot() {
     el("chat").classList.add("on");
     el("fab").classList.add("away");
     el("chatfab").classList.add("away");
+    lockViewport();
     haptic("light");
   };
   const closeChat = () => {
+    unlockViewport();
     el("chat").classList.remove("on");
     el("fab").classList.remove("away");
     el("chatfab").classList.remove("away");

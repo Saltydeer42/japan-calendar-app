@@ -84,6 +84,18 @@ function dayLabel(iso) {
   return d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
 }
 
+/* The prompt forbids dashes, but a model slips occasionally and the rule is
+   absolute, so enforce it on the way in too. Lowercasing is deliberately NOT
+   forced here: it would mangle booking references and flight numbers, which
+   are the one thing that has to be read back exactly. That stays the prompt's
+   job, where the exception can be stated in words. */
+function clean(text) {
+  return text
+    .replace(/\s*[—–]\s*/g, ", ")
+    .replace(/,\s*,/g, ",")
+    .trimEnd();
+}
+
 /** Message text -> HTML. Escapes everything, then linkifies bare URLs. */
 function body(text) {
   return esc(text)
@@ -159,9 +171,9 @@ function render() {
   if (!ui.length) {
     box.innerHTML = `<div class="chatempty">
       <div class="ce-icon">🗾</div>
-      <p>Ask about the trip — where dinner is tonight, what's still unbooked,
-      what's nearby tonight. Or tell me to move something and I'll put a card up
-      for you to confirm.</p>
+      <p>ask about the trip. where dinner is tonight, what's still unbooked,
+      what's nearby. or tell me to move something and i'll put a card up for
+      you to confirm.</p>
     </div>`;
     return;
   }
@@ -178,6 +190,43 @@ function scrollDown(smooth = true) {
 function setTyping(on) {
   el("typing").classList.toggle("on", on);
   if (on) scrollDown();
+}
+
+/* -------------------------------------------------------------- viewport -- */
+/* The keyboard is the whole problem here. iOS does not resize the layout
+   viewport for it; it shrinks the *visual* viewport and scrolls the document
+   to bring the caret into view. A fixed, full-height panel therefore gets
+   shoved up off the top of the screen. Tracking visualViewport and sizing the
+   panel to it is the only reliable fix. */
+
+let savedScroll = 0;
+
+function fitViewport() {
+  const vv = window.visualViewport;
+  const chat = el("chat");
+  if (!vv || !chat.classList.contains("on")) return;
+  chat.style.height = `${vv.height}px`;
+  chat.style.top = `${vv.offsetTop}px`;
+}
+
+export function lockViewport() {
+  savedScroll = window.scrollY;
+  document.body.style.top = `-${savedScroll}px`;
+  document.body.classList.add("chatlock");
+  fitViewport();
+  window.visualViewport?.addEventListener("resize", fitViewport);
+  window.visualViewport?.addEventListener("scroll", fitViewport);
+}
+
+export function unlockViewport() {
+  window.visualViewport?.removeEventListener("resize", fitViewport);
+  window.visualViewport?.removeEventListener("scroll", fitViewport);
+  const chat = el("chat");
+  chat.style.height = "";
+  chat.style.top = "";
+  document.body.classList.remove("chatlock");
+  document.body.style.top = "";
+  window.scrollTo(0, savedScroll);
 }
 
 /* ------------------------------------------------------------ proposals -- */
@@ -287,22 +336,53 @@ async function send(text) {
   try {
     let rounds = 0;
     while (true) {
+      // A blank line in the stream ends one bubble and starts the next, so a
+      // two-part answer arrives as two messages instead of a wall of text.
       let bubble = null;
-      let streamed = "";
+      let carry = "";
+      let any = false;
+
+      const paint = () => {
+        const node = document.querySelector(`[data-msg="${bubble.id}"]`);
+        if (node) node.innerHTML = body(bubble.text);
+        else render();
+        scrollDown(false);
+      };
 
       const { content, stop_reason } = await runTurn(api, (delta) => {
-        streamed += delta;
+        carry += delta;
+
+        let brk;
+        while ((brk = carry.indexOf("\n\n")) >= 0) {
+          const finished = clean(carry.slice(0, brk));
+          carry = carry.slice(brk + 2);
+          if (!finished) continue;
+          if (!bubble) {
+            setTyping(false);
+            bubble = push("assistant", "");
+            any = true;
+          }
+          bubble.text = finished;
+          render();
+          scrollDown(false);
+          haptic("soft");
+          bubble = null; // whatever comes next opens a fresh bubble
+        }
+
+        if (!carry.trim()) return;
         if (!bubble) {
           setTyping(false);
           bubble = push("assistant", "");
+          any = true;
           render();
         }
-        bubble.text = streamed;
-        // Cheap targeted update — full re-render on every token would thrash.
-        const node = document.querySelector(`[data-msg="${bubble.id}"]`);
-        if (node) node.innerHTML = body(streamed);
-        scrollDown(false);
+        bubble.text = clean(carry);
+        paint();
       });
+
+      // Anything left after the stream closes is the final bubble.
+      if (bubble) bubble.text = clean(bubble.text);
+      const streamed = any;
 
       api.push({ role: "assistant", content });
 
@@ -310,7 +390,11 @@ async function send(text) {
 
       if (tools.length) {
         setTyping(false);
-        const host = bubble || push("assistant", "");
+        // Hang the cards off the last assistant bubble, or make one if the
+        // model went straight to a tool without saying anything first.
+        const last = ui[ui.length - 1];
+        const host =
+          last && last.role === "assistant" ? last : push("assistant", "");
         host.proposals = host.proposals || [];
         for (const t of tools) {
           const pid = t.id;
@@ -342,7 +426,7 @@ async function send(text) {
         continue;
       }
 
-      if (!bubble && !streamed) {
+      if (!streamed) {
         // Model returned nothing renderable (e.g. thinking only).
         push("assistant", "…");
       }
@@ -396,6 +480,11 @@ function closeTapbacks() {
 
 export function initChat({ onItineraryChanged }) {
   onChanged = onItineraryChanged || (() => {});
+
+  // The conversation lives in localStorage, which iOS may evict when the
+  // device is short on space. This asks for it to be kept.
+  navigator.storage?.persist?.().catch(() => {});
+
   load();
   render();
 

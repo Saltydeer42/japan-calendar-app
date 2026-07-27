@@ -15,13 +15,28 @@
 
 /* ---------------------------------------------------------------- shell -- */
 
+/* Height and top are driven from JS off visualViewport. When the keyboard
+   opens, iOS shrinks the visual viewport and scrolls the layout viewport to
+   reveal the caret — with a plain inset:0 that drags the whole chat upward and
+   exposes the calendar underneath. Pinning to the visual viewport instead
+   keeps the composer sat exactly on the keyboard. */
 .chat {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100dvh;
   z-index: 130;
   display: none;
   flex-direction: column;
   background: #fff;
+  overflow: hidden;
+}
+/* While the chat is up the page behind it must not scroll at all. */
+body.chatlock {
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
 }
 .chat.on { display: flex; animation: chatin .3s cubic-bezier(.32,.72,0,1) }
 @keyframes chatin { from { transform: translateX(100%) } to { transform: none } }
