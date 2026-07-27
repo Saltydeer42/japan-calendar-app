@@ -1,0 +1,326 @@
+/* ==========================================================================
+   chat.css — the message thread.
+
+   Deliberately iMessage: SF-weighted bubbles with real tails, tapbacks that
+   sit on the corner, a spring on send. The trip sheet's own palette is left
+   alone; this is the one screen that borrows Apple's.
+   ========================================================================== */
+
+:root {
+  --imsg-blue: #0B93F6;
+  --imsg-blue-2: #1476FF;
+  --imsg-grey: #E9E9EB;
+  --imsg-grey-text: #1D1D1F;
+}
+
+/* ---------------------------------------------------------------- shell -- */
+
+.chat {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: none;
+  flex-direction: column;
+  background: #fff;
+}
+.chat.on { display: flex; animation: chatin .3s cubic-bezier(.32,.72,0,1) }
+@keyframes chatin { from { transform: translateX(100%) } to { transform: none } }
+@media (prefers-reduced-motion: reduce) { .chat.on { animation: none } }
+
+.chat-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + var(--safe-t)) 12px 10px;
+  background: rgba(255,255,255,.82);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.chat-back {
+  font: inherit; font-size: 17px; font-weight: 500;
+  background: none; border: 0; color: var(--travel); cursor: pointer;
+  padding: 4px 6px; display: flex; align-items: center; gap: 2px;
+}
+.chat-back svg { width: 18px; height: 18px }
+.chat-who { flex: 1; text-align: center; margin-left: -46px }
+.chat-who b {
+  display: block; font-size: 15.5px; font-weight: 600; letter-spacing: -.016em;
+}
+.chat-who span { font-size: 11.5px; color: var(--label3) }
+.chat-gear {
+  font: inherit; background: none; border: 0; cursor: pointer;
+  color: var(--label3); padding: 6px; display: grid; place-items: center;
+}
+.chat-gear svg { width: 20px; height: 20px }
+
+/* --------------------------------------------------------------- thread -- */
+
+.thread {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 14px 12px 6px;
+}
+
+.chatempty {
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  padding: 0 34px; color: var(--label3);
+}
+.ce-icon { font-size: 44px; margin-bottom: 14px }
+.chatempty p { font-size: 14.5px; line-height: 1.55; margin: 0; max-width: 300px }
+
+.stamp {
+  text-align: center; font-size: 11px; font-weight: 600; color: var(--label3);
+  margin: 16px 0 10px; letter-spacing: .01em;
+}
+
+.msg {
+  display: flex; flex-direction: column; max-width: 78%;
+  margin-bottom: 2px;
+}
+.msg.me { align-self: flex-end; margin-left: auto; align-items: flex-end }
+.msg.them { align-self: flex-start; margin-right: auto; align-items: flex-start }
+.msg.last { margin-bottom: 10px }
+.msg.reacted { margin-top: 16px }
+
+/* ---- bubbles ---- */
+
+.bubble {
+  position: relative;
+  padding: 8px 14px 9px;
+  font-size: 16.5px;
+  line-height: 1.32;
+  letter-spacing: -.01em;
+  border-radius: 19px;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  animation: pop .26s cubic-bezier(.32,1.5,.5,1);
+  transform-origin: var(--org, left bottom);
+}
+@keyframes pop { from { transform: scale(.86); opacity: .4 } to { transform: none; opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .bubble { animation: none } }
+
+.msg.me .bubble {
+  --org: right bottom;
+  background: linear-gradient(180deg, var(--imsg-blue) 0%, var(--imsg-blue-2) 100%);
+  color: #fff;
+}
+.msg.them .bubble { background: var(--imsg-grey); color: var(--imsg-grey-text) }
+.bubble a { color: inherit; text-decoration: underline; text-underline-offset: 2px }
+
+/* Consecutive bubbles in a group square off on the facing side. */
+.msg.me:not(.first) .bubble { border-top-right-radius: 6px }
+.msg.me:not(.last) .bubble { border-bottom-right-radius: 6px }
+.msg.them:not(.first) .bubble { border-top-left-radius: 6px }
+.msg.them:not(.last) .bubble { border-bottom-left-radius: 6px }
+
+/* The tail — only on the last bubble of a run, drawn as two stacked shapes:
+   a filled curve, then a same-colour-as-page notch that carves it. */
+.msg.last .bubble::before,
+.msg.last .bubble::after { content: ""; position: absolute; bottom: 0; height: 19px }
+
+.msg.me.last .bubble::before {
+  right: -7px; width: 20px;
+  background: var(--imsg-blue-2);
+  border-bottom-left-radius: 16px 14px;
+}
+.msg.me.last .bubble::after {
+  right: -20px; width: 20px;
+  background: #fff;
+  border-bottom-left-radius: 10px;
+}
+.msg.them.last .bubble::before {
+  left: -7px; width: 20px;
+  background: var(--imsg-grey);
+  border-bottom-right-radius: 16px 14px;
+}
+.msg.them.last .bubble::after {
+  left: -20px; width: 20px;
+  background: #fff;
+  border-bottom-right-radius: 10px;
+}
+
+/* ---- tapbacks ---- */
+
+.tapback {
+  position: absolute; top: -15px;
+  font-size: 15px; line-height: 1;
+  background: #fff; border-radius: 980px;
+  padding: 4px 5px 5px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.16);
+  animation: tbin .3s cubic-bezier(.32,1.6,.5,1);
+}
+.msg.me .tapback { left: -10px }
+.msg.them .tapback { right: -10px }
+@keyframes tbin { from { transform: scale(0); opacity: 0 } to { transform: none; opacity: 1 } }
+
+.tapbar {
+  position: fixed; z-index: 160;
+  display: none; justify-content: space-around; align-items: center;
+  background: rgba(255,255,255,.94);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 980px; padding: 7px 6px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.2), 0 0 0 .5px rgba(0,0,0,.06);
+}
+.tapbar.on { display: flex; animation: tbarin .28s cubic-bezier(.32,1.4,.5,1) }
+@keyframes tbarin { from { transform: scale(.7) translateY(8px); opacity: 0 } to { transform: none; opacity: 1 } }
+.tb {
+  font: inherit; font-size: 25px; line-height: 1;
+  background: none; border: 0; cursor: pointer;
+  padding: 4px 7px; border-radius: 50%;
+  transition: transform .14s cubic-bezier(.32,1.5,.5,1);
+}
+.tb:active { transform: scale(1.35) }
+
+/* ---- typing indicator ---- */
+
+.typing {
+  display: none; align-items: center; gap: 4px;
+  background: var(--imsg-grey); border-radius: 19px;
+  padding: 12px 15px; margin: 0 12px 12px;
+  width: fit-content;
+}
+.typing.on { display: flex; animation: pop .26s cubic-bezier(.32,1.5,.5,1) }
+.typing i {
+  width: 8px; height: 8px; border-radius: 50%; background: #8E8E93;
+  animation: blink 1.25s infinite ease-in-out;
+}
+.typing i:nth-child(2) { animation-delay: .18s }
+.typing i:nth-child(3) { animation-delay: .36s }
+@keyframes blink { 0%,60%,100% { opacity: .34; transform: translateY(0) } 30% { opacity: 1; transform: translateY(-3px) } }
+
+/* ------------------------------------------------------- proposal cards -- */
+
+.prop {
+  background: #fff; border: 1px solid var(--hairline);
+  border-radius: 16px; padding: 14px 15px; margin: 7px 0 3px;
+  max-width: 320px; box-shadow: 0 2px 10px rgba(0,0,0,.05);
+  animation: pop .3s cubic-bezier(.32,1.4,.5,1);
+}
+.phead { font-size: 15px; font-weight: 600; letter-spacing: -.015em }
+.pwhy { font-size: 13.5px; color: var(--label2); margin-top: 5px; line-height: 1.45 }
+.prows { margin-top: 11px; border-top: 1px solid var(--hairline-soft); padding-top: 9px }
+.prow { display: flex; gap: 10px; font-size: 13px; padding: 3px 0 }
+.pk { color: var(--label3); min-width: 62px; text-transform: capitalize; flex: none }
+.pv { color: var(--label); flex: 1; overflow-wrap: anywhere }
+
+.pacts { display: flex; gap: 8px; margin-top: 13px }
+.pbtn {
+  flex: 1; font: inherit; font-size: 14.5px; font-weight: 600;
+  border: 0; border-radius: 11px; padding: 10px; cursor: pointer;
+  transition: transform .14s ease;
+}
+.pbtn:active { transform: scale(.96) }
+.pbtn.go { background: var(--imsg-blue); color: #fff }
+.pbtn.ghost { background: rgba(0,0,0,.055); color: var(--label2) }
+.prop.applied, .prop.dismissed { opacity: .62 }
+.pdone {
+  margin-top: 12px; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 7px;
+}
+.pdone::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none }
+.pdone.applied { color: var(--see) }
+.pdone.applied::before { background: var(--see) }
+.pdone.dismissed { color: var(--label3) }
+.pdone.dismissed::before { background: var(--label3) }
+
+.msgerr {
+  background: var(--eat-t); color: #B33127;
+  font-size: 13.5px; line-height: 1.45;
+  padding: 10px 13px; border-radius: 14px; max-width: 300px;
+}
+
+/* --------------------------------------------------------------- composer */
+
+.composer {
+  flex: none;
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 8px 10px calc(8px + var(--safe-b));
+  border-top: 1px solid var(--hairline-soft);
+  background: rgba(255,255,255,.9);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+}
+.composer textarea {
+  flex: 1; font: inherit; font-size: 16.5px; line-height: 1.3;
+  resize: none; border: 1px solid rgba(0,0,0,.14); border-radius: 19px;
+  padding: 8px 14px; max-height: 120px; min-height: 38px;
+  background: #fff; color: var(--label);
+}
+.composer textarea:focus { outline: 0; border-color: rgba(0,0,0,.28) }
+.sendbtn {
+  width: 34px; height: 34px; flex: none; margin-bottom: 2px;
+  border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--imsg-blue); color: #fff;
+  display: grid; place-items: center;
+  transition: transform .16s cubic-bezier(.32,1.5,.5,1), opacity .16s;
+}
+.sendbtn:active { transform: scale(.88) }
+.sendbtn:disabled { opacity: .4; cursor: default }
+.sendbtn svg { width: 19px; height: 19px }
+
+/* ------------------------------------------------------- gate & settings -- */
+
+.chatgate { flex: 1; overflow-y: auto; padding: 30px 22px calc(30px + var(--safe-b)) }
+.chatgate h2 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 25px; font-weight: 600; letter-spacing: -.028em; margin: 0 0 8px;
+}
+.chatgate p { font-size: 14.5px; color: var(--label2); line-height: 1.55; margin: 0 0 18px }
+.chatgate .warn {
+  background: var(--book-t); color: #6B4A14;
+  border-radius: 14px; padding: 14px 16px; font-size: 13.5px; line-height: 1.5;
+  margin-bottom: 18px;
+}
+.chatgate .warn b { color: #4A3208 }
+
+.chatsheet {
+  position: fixed; inset: 0; z-index: 150; display: none;
+  background: rgba(0,0,0,.3);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.chatsheet.on { display: block }
+.chatsheet .inner {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: #fff; border-radius: 22px 22px 0 0;
+  padding: 8px 18px calc(24px + var(--safe-b));
+  animation: sheetup .3s cubic-bezier(.32,.72,0,1);
+}
+.chatsheet h3 {
+  font-size: 17px; font-weight: 600; letter-spacing: -.02em;
+  margin: 14px 0 4px;
+}
+.chatsheet .grab {
+  width: 36px; height: 5px; border-radius: 3px;
+  background: rgba(0,0,0,.16); margin: 8px auto 4px;
+}
+.setrow {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 15px 0; border-top: 1px solid var(--hairline-soft);
+}
+.setrow .lbl { font-size: 15.5px; font-weight: 500 }
+.setrow .sub { font-size: 12.5px; color: var(--label3); margin-top: 3px; line-height: 1.4 }
+.setrow button.link {
+  font: inherit; font-size: 15px; font-weight: 500; background: none;
+  border: 0; cursor: pointer; color: var(--eat); padding: 0; flex: none;
+}
+
+/* ----------------------------------------------------------- entry point -- */
+
+.chatfab {
+  position: fixed; right: 20px; bottom: calc(88px + var(--safe-b)); z-index: 60;
+  width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--imsg-blue); color: #fff;
+  box-shadow: 0 6px 24px rgba(11,147,246,.36), 0 1px 2px rgba(0,0,0,.16);
+  display: grid; place-items: center;
+  transition: transform .18s cubic-bezier(.32,.72,0,1);
+}
+.chatfab:active { transform: scale(.92) }
+.chatfab svg { width: 25px; height: 25px }
+.chatfab.away { transform: scale(.6); opacity: 0; pointer-events: none }

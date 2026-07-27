@@ -6,7 +6,7 @@
    than no itinerary -- store.js keeps its own copy in localStorage for that.
    ========================================================================== */
 
-const VERSION = "1";
+const VERSION = "2";
 const CACHE = `jc-shell-${VERSION}`;
 const TIMEOUT = 3500;
 
@@ -14,6 +14,7 @@ const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./chat.css",
   "./manifest.webmanifest",
   "./js/app.js",
   "./js/store.js",
@@ -21,6 +22,9 @@ const SHELL = [
   "./js/drag.js",
   "./js/editor.js",
   "./js/config.js",
+  "./js/chat.js",
+  "./js/agent.js",
+  "./js/haptics.js",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

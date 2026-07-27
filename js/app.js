@@ -18,6 +18,8 @@ import {
 import { renderAll, renderDays, renderStats } from "./render.js";
 import { initDrag, swallowedClick } from "./drag.js";
 import { initEditor, openEditor, editorOpen } from "./editor.js";
+import { initChat } from "./chat.js";
+import { haptic } from "./haptics.js";
 
 const el = (id) => document.getElementById(id);
 
@@ -245,6 +247,10 @@ async function boot() {
   el("fab").classList.remove("hidden");
 
   renderAll();
+  // The filter's wording is personal, so it lives in the private itinerary
+  // rather than in the public shell.
+  el("fbtn-tentative").textContent =
+    state.data.trip.tentativeLabel || "Tentative";
   applyFilter("all");
 
   el("filters").addEventListener("click", (ev) => {
@@ -283,6 +289,40 @@ async function boot() {
   });
 
   el("fab").addEventListener("click", () => openEditor(null, repaint));
+
+  // --- the assistant ------------------------------------------------------
+  el("chatfab").classList.remove("hidden");
+
+  const openChat = () => {
+    el("chat").classList.add("on");
+    el("fab").classList.add("away");
+    el("chatfab").classList.add("away");
+    haptic("light");
+  };
+  const closeChat = () => {
+    el("chat").classList.remove("on");
+    el("fab").classList.remove("away");
+    el("chatfab").classList.remove("away");
+  };
+
+  el("chatfab").addEventListener("click", openChat);
+  el("chatback").addEventListener("click", closeChat);
+
+  const sheet = el("chatsheet");
+  el("chatgear").addEventListener("click", () => sheet.classList.add("on"));
+  sheet.addEventListener("click", (ev) => {
+    if (ev.target === sheet) sheet.classList.remove("on");
+  });
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape") return;
+    if (sheet.classList.contains("on")) sheet.classList.remove("on");
+    else if (el("chat").classList.contains("on")) closeChat();
+  });
+
+  // A confirmed proposal writes through the same store as manual edits, so the
+  // calendar just needs repainting.
+  initChat({ onItineraryChanged: repaint });
 
   // Re-render when a background sync brings in someone else's change.
   let lastSeen = JSON.stringify(state.data);
