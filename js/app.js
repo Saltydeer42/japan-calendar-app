@@ -154,11 +154,12 @@ function repaint() {
 /* ------------------------------------------------------------ sync badge - */
 
 function initSyncBadge() {
-  subscribe(() => {
-    const b = el("sync");
-    b.dataset.state = state.status;
+  const paint = () => {
+    el("sync").dataset.state = state.status;
     el("syncText").textContent = state.message;
-  });
+  };
+  subscribe(paint);
+  paint(); // the first status was set before anyone was listening
 
   el("sync").addEventListener("click", async () => {
     toast("Checking for changes…");
