@@ -358,6 +358,10 @@ export async function runTurn(messages, onDelta) {
             onDelta?.(ev.delta.text);
           } else if (ev.delta.type === "input_json_delta") {
             b._json += ev.delta.partial_json;
+          } else if (ev.delta.type === "thinking_delta") {
+            b.thinking = (b.thinking || "") + ev.delta.thinking;
+          } else if (ev.delta.type === "signature_delta") {
+            b.signature = (b.signature || "") + ev.delta.signature;
           }
           break;
         }
@@ -386,6 +390,30 @@ export async function runTurn(messages, onDelta) {
   }
 
   return { content: blocks.filter(Boolean), stop_reason: stopReason };
+}
+
+/**
+ * The assistant turn as it should be echoed back on the next request.
+ *
+ * Thinking blocks are dropped. On Sonnet 5 `display` defaults to "omitted", so
+ * they arrive with an empty `thinking` string, and replaying one is rejected
+ * with "each thinking block must contain thinking". Keeping them would mean
+ * round-tripping the signature perfectly for no benefit — nothing in this chat
+ * depends on the model re-reading its own reasoning from a previous turn.
+ *
+ * Empty text blocks go too: a turn that was pure thinking leaves a `{type:
+ * "text", text: ""}` behind, and an empty content array is also a 400, so the
+ * caller has to check for that.
+ */
+export function replayable(content) {
+  return content
+    .filter((b) => b.type === "text" || b.type === "tool_use")
+    .filter((b) => b.type !== "text" || (b.text && b.text.trim()))
+    .map((b) =>
+      b.type === "tool_use"
+        ? { type: "tool_use", id: b.id, name: b.name, input: b.input || {} }
+        : { type: "text", text: b.text }
+    );
 }
 
 function friendlyError(status, detail) {

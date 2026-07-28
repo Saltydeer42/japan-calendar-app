@@ -13,6 +13,7 @@ import {
   clearApiKey,
   describeProposal,
   proposalDetails,
+  replayable,
 } from "./agent.js";
 import {
   state,
@@ -200,6 +201,7 @@ function setTyping(on) {
    panel to it is the only reliable fix. */
 
 let savedScroll = 0;
+let chasing = 0;
 
 function fitViewport() {
   const vv = window.visualViewport;
@@ -209,17 +211,32 @@ function fitViewport() {
   chat.style.top = `${vv.offsetTop}px`;
 }
 
+/* `resize` fires once, partway through the keyboard's slide-in animation, so
+   sizing to it leaves the panel short and the page showing through underneath.
+   Follow the animation for a beat instead and settle on the final value. */
+function chaseKeyboard() {
+  cancelAnimationFrame(chasing);
+  const started = performance.now();
+  const step = () => {
+    fitViewport();
+    scrollDown(false);
+    if (performance.now() - started < 700) chasing = requestAnimationFrame(step);
+  };
+  chasing = requestAnimationFrame(step);
+}
+
 export function lockViewport() {
   savedScroll = window.scrollY;
   document.body.style.top = `-${savedScroll}px`;
   document.body.classList.add("chatlock");
   fitViewport();
-  window.visualViewport?.addEventListener("resize", fitViewport);
+  window.visualViewport?.addEventListener("resize", chaseKeyboard);
   window.visualViewport?.addEventListener("scroll", fitViewport);
 }
 
 export function unlockViewport() {
-  window.visualViewport?.removeEventListener("resize", fitViewport);
+  cancelAnimationFrame(chasing);
+  window.visualViewport?.removeEventListener("resize", chaseKeyboard);
   window.visualViewport?.removeEventListener("scroll", fitViewport);
   const chat = el("chat");
   chat.style.height = "";
@@ -384,7 +401,8 @@ async function send(text) {
       if (bubble) bubble.text = clean(bubble.text);
       const streamed = any;
 
-      api.push({ role: "assistant", content });
+      const echo = replayable(content);
+      if (echo.length) api.push({ role: "assistant", content: echo });
 
       const tools = content.filter((b) => b.type === "tool_use");
 
@@ -412,6 +430,7 @@ async function send(text) {
         save();
 
         if (++rounds > MAX_TOOL_ROUNDS) break;
+        if (!echo.some((b) => b.type === "tool_use")) break;
 
         api.push({
           role: "user",
@@ -496,6 +515,8 @@ export function initChat({ onItineraryChanged }) {
   };
 
   input.addEventListener("input", grow);
+  input.addEventListener("focus", chaseKeyboard);
+  input.addEventListener("blur", chaseKeyboard);
 
   el("chatsend").addEventListener("click", () => {
     const v = input.value;
