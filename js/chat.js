@@ -207,8 +207,21 @@ function fitViewport() {
   const vv = window.visualViewport;
   const chat = el("chat");
   if (!vv || !chat.classList.contains("on")) return;
+
+  // Where the layout viewport shrinks for the keyboard on its own
+  // (interactive-widget=resizes-content), plain CSS is already correct and
+  // compensating here only fights the browser mid-animation, which is what
+  // threw the panel down the screen for a few frames. Stand down instead.
+  if (Math.abs(window.innerHeight - vv.height) <= 2) {
+    chat.style.height = "";
+    chat.style.top = "";
+    return;
+  }
+
   chat.style.height = `${vv.height}px`;
-  chat.style.top = `${vv.offsetTop}px`;
+  // Never negative and never below the top of the screen: pushing the panel
+  // down is always wrong, and it is what exposed the calendar behind it.
+  chat.style.top = `${Math.max(0, vv.offsetTop)}px`;
 }
 
 /* `resize` fires once, partway through the keyboard's slide-in animation, so

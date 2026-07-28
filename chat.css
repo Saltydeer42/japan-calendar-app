@@ -32,11 +32,20 @@
   background: #fff;
   overflow: hidden;
 }
-/* While the chat is up the page behind it must not scroll at all. */
+/* While the chat is up the page behind it must not scroll at all. Hiding the
+   calendar outright, rather than just covering it, means any transient
+   mis-sizing during the keyboard animation can only ever reveal white. There
+   is nothing behind the chat left to flash. */
 body.chatlock {
   position: fixed;
   width: 100%;
   overflow: hidden;
+  background: #fff;
+}
+body.chatlock .wrap,
+body.chatlock .fab,
+body.chatlock .chatfab {
+  visibility: hidden;
 }
 .chat.on { display: flex; animation: chatin .3s cubic-bezier(.32,.72,0,1) }
 @keyframes chatin { from { transform: translateX(100%) } to { transform: none } }
