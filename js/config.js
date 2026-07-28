@@ -8,7 +8,7 @@ export const REPO = {
 };
 
 // Bump to force every device to drop its cached shell on the next launch.
-export const SHELL_VERSION = "4";
+export const SHELL_VERSION = "5";
 
 export const CATS = {
   travel: "Travel",
