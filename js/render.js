@@ -97,6 +97,14 @@ export function mapsUrl(p) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery(p))}`;
 }
 
+/* ---------------------------------------------------------------- rules -- */
+// A rule is {id, text} once the store has normalised the document, and a bare
+// string in a cached copy written before the assistant could edit them.
+
+export function ruleText(i) {
+  return typeof i === "string" ? i : i?.text || "";
+}
+
 /* --------------------------------------------------- collapsible panels -- */
 // The three panels under the calendar are reference material, not the thing
 // you opened the app for, so they start closed and remember what you did with
@@ -367,10 +375,14 @@ function renderNotice() {
 
 function renderLegs() {
   document.getElementById("legs").innerHTML = (state.data.legs || [])
-    .map(
-      (l) => `<div class="leg card"><div class="dot" style="background:${esc(l.color)}"></div>
-      <div class="nm">${esc(l.name)}</div><div class="mt">${esc(l.meta)}</div></div>`
-    )
+    .map((l) => {
+      // The line under the name is the area and the dates. Stored as `meta` on
+      // the original sheet, rebuilt from the two fields once one is edited.
+      const meta = l.meta || [l.area, l.dates].filter(Boolean).join(" · ");
+      const note = l.note ? `<div class="mt">${rich(l.note)}</div>` : "";
+      return `<div class="leg card"><div class="dot" style="background:${esc(l.color)}"></div>
+      <div class="nm">${esc(l.name)}</div><div class="mt">${esc(meta)}</div>${note}</div>`;
+    })
     .join("");
 }
 
@@ -405,7 +417,7 @@ function renderFoot() {
   secState(el, "foot");
   el.innerHTML =
     secHead("foot", r.title) + `<ul>` +
-    r.items.map((i) => `<li>${rich(i)}</li>`).join("") +
+    r.items.map((i) => `<li>${rich(ruleText(i))}</li>`).join("") +
     `</ul>`;
 }
 

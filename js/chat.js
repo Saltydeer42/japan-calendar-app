@@ -15,13 +15,7 @@ import {
   proposalDetails,
   replayable,
 } from "./agent.js";
-import {
-  state,
-  upsertEvent,
-  deleteEvent,
-  nextSortFor,
-  makeId,
-} from "./store.js";
+import { applyProposal, isDestructive } from "./proposals.js";
 import { haptic, hasRealHaptics, hapticsOn, setHaptics } from "./haptics.js";
 import { esc } from "./render.js";
 
@@ -120,7 +114,7 @@ function proposalHtml(p) {
       ? `<div class="pacts">
            <button class="pbtn ghost" data-dismiss="${esc(p.id)}">Not now</button>
            <button class="pbtn go" data-apply="${esc(p.id)}">${
-            p.name === "propose_delete" ? "Delete" : "Confirm"
+            isDestructive(p.name) ? "Delete" : "Confirm"
           }</button>
          </div>`
       : `<div class="pdone ${p.status}">${
@@ -277,66 +271,10 @@ export function unlockViewport() {
 
 const pending = new Map(); // proposal id -> {name, input}
 
-function applyProposal(pid) {
+function applyPending(pid) {
   const p = pending.get(pid);
   if (!p) return false;
-  const { name, input } = p;
-
-  if (name === "propose_add") {
-    const date = input.date;
-    upsertEvent({
-      id: makeId(input.title, date),
-      date,
-      sort: nextSortFor(date),
-      cat: input.cat,
-      status: input.status,
-      kicker: input.kicker || "Plan",
-      time: input.time || "",
-      timeHard: !!input.timeHard,
-      title: input.title,
-      label: input.title,
-      note: input.note || "",
-      place: input.place || "",
-      pills: [],
-    });
-    return true;
-  }
-
-  const existing = state.data.events.find((e) => e.id === input.id);
-  if (!existing) return false;
-
-  if (name === "propose_delete") {
-    deleteEvent(existing.id);
-    return true;
-  }
-
-  if (name === "propose_move") {
-    const next = { ...existing, date: input.date };
-    if (input.time) next.time = input.time;
-    if (existing.date !== input.date) next.sort = nextSortFor(input.date);
-    upsertEvent(next);
-    return true;
-  }
-
-  if (name === "propose_update") {
-    const next = { ...existing };
-    for (const k of [
-      "title",
-      "time",
-      "timeHard",
-      "status",
-      "kicker",
-      "place",
-      "note",
-    ]) {
-      if (input[k] !== undefined && input[k] !== "") next[k] = input[k];
-    }
-    if (input.title) next.label = input.title;
-    upsertEvent(next);
-    return true;
-  }
-
-  return false;
+  return applyProposal(p.name, p.input);
 }
 
 function markProposal(pid, status) {
@@ -568,7 +506,7 @@ export function initChat({ onItineraryChanged }) {
     const dropId = ev.target.closest("[data-dismiss]")?.dataset.dismiss;
 
     if (applyId) {
-      const ok = applyProposal(applyId);
+      const ok = applyPending(applyId);
       markProposal(applyId, ok ? "applied" : "dismissed");
       haptic(ok ? "success" : "warning");
       render();
