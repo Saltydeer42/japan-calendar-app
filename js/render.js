@@ -202,18 +202,45 @@ function placeCard(p) {
 </article>`;
 }
 
+/** A day's spots read better in a few labelled runs than as one flat list.
+ *  Fixed order, so every day reads the same way; anything that fits none of
+ *  these, an inn or a station, falls to the end. */
+const PLACE_GROUPS = [
+  { heading: "See", cats: ["see"] },
+  { heading: "Coffee and food", cats: ["drink", "eat"] },
+  { heading: "Shops", cats: ["shop"] },
+];
+
+function groupPlaces(list) {
+  const groups = PLACE_GROUPS
+    .map((g) => ({ heading: g.heading, items: list.filter((p) => g.cats.includes(p.cat)) }))
+    .filter((g) => g.items.length);
+  const rest = list.filter((p) => !PLACE_GROUPS.some((g) => g.cats.includes(p.cat)));
+  if (rest.length) groups.push({ heading: "Also saved", items: rest });
+  return groups;
+}
+
 /** The saved-spots page for one day. Returns false if there is nothing on it. */
 export function renderPlacesPage(date) {
   const list = placesOn(date);
   if (!list.length) return false;
+
+  // One heading over the whole list would say nothing, so a day that is all
+  // temples or all cafes stays flat.
+  const groups = groupPlaces(list);
+  const cards =
+    groups.length > 1
+      ? groups
+          .map((g) => `<h2 class="pl-grp">${esc(g.heading)}</h2>` + g.items.map(placeCard).join(""))
+          .join("")
+      : list.map(placeCard).join("");
 
   const city = cityFor(date);
   document.getElementById("pltitle").textContent = "Saved spots";
   document.getElementById("plsub").textContent =
     `${weekday(date)} ${monthName(date)} ${dayNumber(date)}${city ? " · " + city : ""}`;
   document.getElementById("plbody").innerHTML =
-    `<p class="pl-lede">${esc(state.data.places?.sub || "")}</p>` +
-    list.map(placeCard).join("");
+    `<p class="pl-lede">${esc(state.data.places?.sub || "")}</p>` + cards;
   return true;
 }
 
