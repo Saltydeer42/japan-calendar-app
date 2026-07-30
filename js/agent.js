@@ -96,7 +96,7 @@ function itineraryText() {
   }
 
   if (d.places?.items?.length) {
-    lines.push(`\n## Saved spots with no day`);
+    lines.push(`\n## Raquel's Map, the spots with no day`);
     for (const b of d.places.buckets || []) {
       const list = placesInBucket(b.key);
       if (!list.length) continue;
@@ -138,7 +138,7 @@ You can answer anything about the itinerary below, and you can PROPOSE changes t
 
 Your tools only ever propose. A card appears in the chat and the user taps to confirm. So never say "done", "added", or "moved" — say what you're proposing and let the card speak. After calling a tool, keep your reply to a single short line; the card carries the detail.
 
-The saved spots listed under each day are a separate thing from the itinerary: shops, cafes and sights one of them saved, sitting behind a "saved spots" row on that day. Nothing there is booked or timed, and your tools cannot touch them. Use them when someone asks what else is around, and if one deserves a real slot, propose it as a new entry.
+The saved spots listed under each day are a separate thing from the itinerary: shops, cafes and sights one of them saved, sitting behind a "Raquel's Map" row on that day. Nothing there is booked or timed, and your tools cannot touch them. Use them when someone asks what else is around, and if one deserves a real slot, propose it as a new entry.
 
 # How to write
 Three rules about style, and they are not negotiable.

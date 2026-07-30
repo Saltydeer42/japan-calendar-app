@@ -15,7 +15,14 @@ import {
   LOCAL,
   DEMO,
 } from "./store.js";
-import { renderAll, renderDays, renderStats } from "./render.js";
+import {
+  renderAll,
+  renderDays,
+  renderStats,
+  allPlaces,
+  mapsQuery,
+  setSectionOpen,
+} from "./render.js";
 import { initDrag, swallowedClick, isDragging } from "./drag.js";
 import { initPager, refresh as refreshPager, nudge as nudgeDay } from "./pager.js";
 import { initPlaces, placesOpen } from "./places.js";
@@ -51,7 +58,9 @@ function matches(entry, f) {
 
 function applyFilter(f) {
   filter = f;
-  document.querySelectorAll(".entry").forEach((e) =>
+  // Scoped to the calendar: the rows on Raquel's Map wear the same class, and
+  // filtering a page you opened deliberately would only empty it.
+  document.querySelectorAll("#days .entry").forEach((e) =>
     e.classList.toggle("hidden", !matches(e, f))
   );
   // A day is a whole panel now, so it is never removed from the strip: taking
@@ -82,29 +91,49 @@ let sheetPlace = "";
 let sheetEventId = null;
 let lastFocus = null;
 
+/** The one sheet, whether what you tapped was an event or a saved spot. */
+function paintSheet({ name, address, editable }) {
+  sheetPlace = address || "";
+
+  sheet.name.textContent = name;
+  sheet.addr.textContent = address || "No address on this one";
+
+  const hasPlace = !!address;
+  const q = encodeURIComponent(address || "");
+  sheet.apple.href = `https://maps.apple.com/?q=${q}`;
+  sheet.google.href = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  sheet.apple.classList.toggle("hidden", !hasPlace);
+  sheet.google.classList.toggle("hidden", !hasPlace);
+  el("actcopy").classList.toggle("hidden", !hasPlace);
+  el("actedit").classList.toggle("hidden", !editable);
+  sheet.copyTxt.textContent = "Copy address";
+
+  lastFocus = document.activeElement;
+  sheet.scrim.classList.add("on");
+  (hasPlace ? sheet.apple : el("actedit")).focus();
+}
+
 function openSheet(entry) {
   const id = entry.dataset.id;
   const event = state.data.events.find((e) => e.id === id);
   if (!event) return;
 
   sheetEventId = id;
-  sheetPlace = event.place || "";
+  paintSheet({
+    name: event.label || event.title,
+    address: event.place || "",
+    editable: true,
+  });
+}
 
-  sheet.name.textContent = event.label || event.title;
-  sheet.addr.textContent = event.place || "No address on this one";
+/** Same tap, same sheet, minus the editing: nothing on Raquel's Map is ours to
+ *  change. */
+function openSpotSheet(entry) {
+  const spot = allPlaces().find((p) => p.id === entry.dataset.id);
+  if (!spot) return;
 
-  const hasPlace = !!event.place;
-  const q = encodeURIComponent(event.place || "");
-  sheet.apple.href = `https://maps.apple.com/?q=${q}`;
-  sheet.google.href = `https://www.google.com/maps/search/?api=1&query=${q}`;
-  sheet.apple.classList.toggle("hidden", !hasPlace);
-  sheet.google.classList.toggle("hidden", !hasPlace);
-  el("actcopy").classList.toggle("hidden", !hasPlace);
-  sheet.copyTxt.textContent = "Copy address";
-
-  lastFocus = document.activeElement;
-  sheet.scrim.classList.add("on");
-  (hasPlace ? sheet.apple : el("actedit")).focus();
+  sheetEventId = null;
+  paintSheet({ name: spot.name, address: mapsQuery(spot), editable: false });
 }
 
 function closeSheet() {
@@ -147,6 +176,35 @@ function initSheet() {
 
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && sheet.scrim.classList.contains("on")) closeSheet();
+  });
+}
+
+/* ------------------------------------------------------------- sections -- */
+// The panels under the calendar open and close on their heading, and remember
+// which way you left them. They are painted by render.js; this is the tapping.
+
+function initSections() {
+  const toggle = (head) => {
+    const sec = head.closest(".sec");
+    if (!sec) return;
+    const open = sec.classList.contains("collapsed");
+    sec.classList.toggle("collapsed", !open);
+    head.setAttribute("aria-expanded", String(open));
+    setSectionOpen(head.dataset.sec, open);
+    haptic("light");
+  };
+
+  document.addEventListener("click", (ev) => {
+    const head = ev.target.closest(".sechead");
+    if (head) toggle(head);
+  });
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    const head = ev.target.closest(".sechead");
+    if (!head) return;
+    ev.preventDefault();
+    toggle(head);
   });
 }
 
@@ -290,8 +348,9 @@ async function boot() {
       el("chat").classList.contains("on") ||
       el("mapscrim").classList.contains("on"),
   });
-  initPlaces();
+  initPlaces({ onSpot: openSpotSheet });
   initSheet();
+  initSections();
   initSyncBadge();
   initEditor({
     toast,

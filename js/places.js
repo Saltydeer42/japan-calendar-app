@@ -1,9 +1,10 @@
 /* ==========================================================================
-   places.js — the saved-spots page.
+   places.js — Raquel's Map.
 
    A day panel shows one row for however many spots are saved on it, and this
    is what that row opens: the list itself, on its own screen, so a day with
-   six cafes on it does not read as a day with six appointments.
+   six cafes on it does not read as a day with six appointments. The rows are
+   the day's own entry rows, and tapping one opens the same place sheet.
 
    Nothing here writes. These are candidates, not plans.
    ========================================================================== */
@@ -50,7 +51,7 @@ export function closePlaces({ fromHistory = false } = {}) {
   pushed = false;
 }
 
-export function initPlaces() {
+export function initPlaces({ onSpot } = {}) {
   el("plback").addEventListener("click", () => closePlaces());
 
   // The row lives on the day panel, which is repainted, so listen up on the
@@ -58,6 +59,20 @@ export function initPlaces() {
   el("pager").addEventListener("click", (ev) => {
     const row = ev.target.closest(".savedrow");
     if (row) openPlaces(row.dataset.date);
+  });
+
+  // A spot on the page behaves like an entry on the day: tap opens the sheet.
+  el("plbody").addEventListener("click", (ev) => {
+    const entry = ev.target.closest(".entry");
+    if (entry && entry.dataset.id && onSpot) onSpot(entry);
+  });
+  el("plbody").addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    const entry = ev.target.closest(".entry");
+    if (entry && entry.dataset.id && onSpot) {
+      ev.preventDefault();
+      onSpot(entry);
+    }
   });
 
   window.addEventListener("popstate", (ev) => {
@@ -70,7 +85,10 @@ export function initPlaces() {
   });
 
   document.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape" && open) closePlaces();
+    // The place sheet opens on top of this page and takes Escape first.
+    if (ev.key !== "Escape" || !open) return;
+    if (el("mapscrim").classList.contains("on")) return;
+    closePlaces();
   });
 
   // Landing straight on a saved-spots link.

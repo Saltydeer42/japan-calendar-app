@@ -60,7 +60,7 @@ export const DEMO_DOC = {
     },
   ],
   places: {
-    title: "Saved spots",
+    title: "Raquel's Map",
     sub: "A sample list of places, none of them booked.",
     buckets: [
       { key: "no-day", heading: "No day for these yet", status: "you", label: "No slot" },

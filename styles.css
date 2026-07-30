@@ -245,8 +245,9 @@ body{
 }
 
 /* ---------------- map sheet ---------------- */
+/* Above the day sheet and above Raquel's Map, since it opens from both. */
 .scrim{
-  position:fixed;inset:0;z-index:100;display:none;
+  position:fixed;inset:0;z-index:150;display:none;
   align-items:center;justify-content:center;padding:22px;
   background:rgba(0,0,0,.28);
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
@@ -504,6 +505,27 @@ body.dragging .entry{transition:none}
 .dot:hover::after{background:rgba(0,0,0,.34)}
 .dot.on::after{background:var(--label);transform:scale(1.4)}
 
+/* ---------------- collapsible panels ---------------- */
+/* The heading keeps the type it always had; it just gains a chevron and,
+   closed, the padding the hidden subtitle used to carry. */
+.sechead{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  cursor:pointer;-webkit-user-select:none;user-select:none;
+}
+.sechead:focus-visible{outline:2px solid var(--travel);outline-offset:2px}
+.sechead .chev{
+  width:9px;height:9px;flex:none;margin-right:2px;
+  border-right:2px solid var(--label3);border-bottom:2px solid var(--label3);
+  transform:rotate(45deg) translateY(-2px);
+}
+.sec:not(.collapsed) > .sechead .chev{transform:rotate(-135deg) translateY(-2px)}
+@media (prefers-reduced-motion:no-preference){
+  .sechead .chev{transition:transform .22s cubic-bezier(.32,.72,0,1)}
+}
+.sec.collapsed > :not(.sechead){display:none}
+.board.collapsed > .sechead,.extra.collapsed > .sechead{padding-bottom:24px}
+.foot.collapsed > .sechead{margin-bottom:0}
+
 /* ---------------- saved spots, the day row ---------------- */
 .savedrow{
   display:flex;align-items:center;gap:12px;width:100%;
@@ -563,43 +585,24 @@ body.placeson .fab,body.placeson .chatfab{visibility:hidden}
   padding:16px 14px calc(30px + var(--safe-b));
   max-width:640px;width:100%;margin:0 auto;
 }
-.pl-lede{margin:0 4px 14px;font-size:12.5px;color:var(--label3);line-height:1.5}
+.pl-lede{margin:0 4px 6px;font-size:12.5px;color:var(--label3);line-height:1.5}
+/* Where the list actually lives, kept as quiet as the lede above it. */
+.pl-src{margin:0 4px 14px;font-size:12.5px;line-height:1.5}
+.pl-src a{
+  display:inline-flex;align-items:center;gap:5px;
+  color:var(--label3);font-weight:500;text-decoration:none;
+}
+.pl-src a:hover{color:var(--travel)}
+.pl-src a::after{
+  content:"";width:5px;height:5px;
+  border-right:1.4px solid currentColor;border-top:1.4px solid currentColor;
+  transform:rotate(45deg);
+}
 .pl-grp{font-size:12px;font-weight:600;color:var(--label3);margin:20px 4px 10px;
   letter-spacing:-.004em}
 .pl-grp:first-of-type{margin-top:2px}
-
-.pcard{
-  background:var(--surface);border:1px solid var(--hairline-soft);
-  border-radius:14px;padding:15px 17px;
-}
-.pcard + .pcard{margin-top:10px}
-.pc-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px}
-.pc-head h3{
-  font-size:16px;font-weight:600;letter-spacing:-.018em;line-height:1.35;margin:0;
-  overflow-wrap:break-word;
-}
-.pc-kind{
-  font-size:11px;font-weight:600;color:var(--c,var(--label3));flex:none;
-  display:flex;align-items:center;gap:6px;white-space:nowrap;padding-top:2px;
-}
-.pc-kind::before{
-  content:"";width:6px;height:6px;border-radius:50%;flex:none;
-  background:var(--c,var(--label3));
-}
-.pc-where{margin:5px 0 0;font-size:13px;color:var(--label2);letter-spacing:-.006em}
-.pc-flags{margin:10px 0 0}
-.pc-flags .pill{margin-left:0;margin-right:6px}
-.pc-note{margin:9px 0 0;font-size:13.5px;color:var(--label2);line-height:1.5;
-  letter-spacing:-.006em}
-.pc-map{
-  display:inline-flex;align-items:center;gap:5px;margin-top:12px;
-  font-size:13.5px;font-weight:500;color:var(--travel);text-decoration:none;
-}
-.pc-map::after{
-  content:"";width:5px;height:5px;
-  border-right:1.6px solid currentColor;border-top:1.6px solid currentColor;
-  transform:rotate(45deg);
-}
+/* The spots themselves are day entries, in a day's card. No styles of their
+   own: see placeAsEntry in render.js. */
 .pill.shut{background:var(--eat-t);color:#B33127}
 
 /* ---------------- saved, but not on a day ---------------- */

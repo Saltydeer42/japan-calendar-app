@@ -73,6 +73,9 @@ export function eventsOn(date) {
 /* --------------------------------------------------------------- places -- */
 // Saved spots are not events: nothing is booked, nothing has a time, and they
 // never take part in drag or in the ICS. They hang off a day, or off a bucket.
+// On screen the list is Raquel's, and it is named after her everywhere.
+
+export const PLACES_TITLE = "Raquel's Map";
 
 export function allPlaces() {
   return state.data.places?.items || [];
@@ -92,6 +95,42 @@ export function mapsQuery(p) {
 
 export function mapsUrl(p) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery(p))}`;
+}
+
+/* --------------------------------------------------- collapsible panels -- */
+// The three panels under the calendar are reference material, not the thing
+// you opened the app for, so they start closed and remember what you did with
+// them. The choice is per section and survives a repaint, a day swipe and a
+// relaunch, which is the whole point of putting it in storage.
+
+const SEC_KEY = (name) => `jc.sec.${name}`;
+
+export function sectionOpen(name) {
+  try {
+    return localStorage.getItem(SEC_KEY(name)) === "open";
+  } catch (e) {
+    return false; // private mode; closed is the default anyway
+  }
+}
+
+export function setSectionOpen(name, open) {
+  try {
+    localStorage.setItem(SEC_KEY(name), open ? "open" : "shut");
+  } catch (e) {
+    /* the section still toggles for this session */
+  }
+}
+
+/** The heading of a collapsible panel, which is also the thing you tap. */
+function secHead(name, title) {
+  return `<h2 class="sechead" data-sec="${name}" role="button" tabindex="0"
+  aria-expanded="${sectionOpen(name)}">${esc(title)}<span class="chev"></span></h2>`;
+}
+
+/** Paints the open/closed state onto a panel that has just been re-rendered. */
+function secState(el, name) {
+  el.classList.add("sec");
+  el.classList.toggle("collapsed", !sectionOpen(name));
 }
 
 /* ---------------------------------------------------------------- parts -- */
@@ -128,9 +167,9 @@ function savedRowHtml(date) {
   const sub = areas.slice(0, 3).join(" · ") + (areas.length > 3 ? " …" : "");
 
   return `<button class="savedrow" data-date="${date}"
-  aria-label="Saved spots for this day, ${list.length}">
+  aria-label="${esc(PLACES_TITLE)} for this day, ${list.length} spots">
   <span class="sv-n">${list.length}</span>
-  <span class="sv-main"><span class="sv-t">Saved spots</span><span class="sv-s">${esc(sub)}</span></span>
+  <span class="sv-main"><span class="sv-t">${esc(PLACES_TITLE)}</span><span class="sv-s">${esc(sub)}</span></span>
 </button>`;
 }
 
@@ -181,25 +220,37 @@ function renderDots(dates) {
 
 /* -------------------------------------------------------- saved spot list - */
 
-function placeCard(p) {
-  const flags = [];
-  if (p.closed === "temporarily") flags.push(`<span class="pill pend">Temporarily closed</span>`);
-  if (p.closed === "permanently") flags.push(`<span class="pill shut">Do not go, closed for good</span>`);
-  if (p.tentative) flags.push(`<span class="pill">Unconfirmed</span>`);
+/** A saved spot dressed as an entry. There is one row design in this app and
+ *  this is how a spot gets into it: same fields, same entryHtml, same classes,
+ *  so the list cannot drift away from the day it hangs off. A spot has no time,
+ *  so the meta column carries the kind and the neighbourhood instead. */
+export function placeAsEntry(p) {
+  const pills = [];
+  if (p.closed === "temporarily") pills.push({ text: "Temporarily closed", style: "pend" });
+  if (p.closed === "permanently") pills.push({ text: "Do not go, closed for good", style: "shut" });
+  if (p.tentative) pills.push({ text: "Unconfirmed" });
 
-  const where = [p.area, p.city].filter(Boolean).join(" · ");
-  const note = p.note ? `<p class="pc-note">${rich(p.note)}</p>` : "";
+  return {
+    id: p.id,
+    cat: p.cat,
+    status: p.tentative ? "tentative" : "",
+    kicker: p.kind,
+    time: p.area || p.city || "",
+    timeHard: false,
+    title: p.name,
+    note: p.note,
+    pills,
+    // Tappable for the same reason an event is: it opens the place sheet.
+    place: mapsQuery(p),
+    label: p.name,
+  };
+}
 
-  return `<article class="pcard e-${esc(p.cat)}">
-  <div class="pc-head">
-    <h3>${esc(p.name)}</h3>
-    <span class="pc-kind">${esc(p.kind)}</span>
-  </div>
-  <p class="pc-where">${esc(where)}</p>
-  ${flags.length ? `<p class="pc-flags">${flags.join(" ")}</p>` : ""}
-  ${note}
-  <a class="pc-map" href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">Open in Google Maps</a>
-</article>`;
+/** One run of spots, in the same card the day's entries sit in. */
+function placeCardHtml(list) {
+  return `<div class="card"><div class="entries">${list
+    .map((p) => entryHtml(placeAsEntry(p)))
+    .join("")}</div></div>`;
 }
 
 /** A day's spots read better in a few labelled runs than as one flat list.
@@ -220,7 +271,7 @@ function groupPlaces(list) {
   return groups;
 }
 
-/** The saved-spots page for one day. Returns false if there is nothing on it. */
+/** Raquel's Map for one day. Returns false if there is nothing on it. */
 export function renderPlacesPage(date) {
   const list = placesOn(date);
   if (!list.length) return false;
@@ -231,16 +282,22 @@ export function renderPlacesPage(date) {
   const cards =
     groups.length > 1
       ? groups
-          .map((g) => `<h2 class="pl-grp">${esc(g.heading)}</h2>` + g.items.map(placeCard).join(""))
+          .map((g) => `<h2 class="pl-grp">${esc(g.heading)}</h2>` + placeCardHtml(g.items))
           .join("")
-      : list.map(placeCard).join("");
+      : placeCardHtml(list);
+
+  // Where the list came from, for when the app's copy of it is not enough.
+  const source = state.data.places?.source;
+  const link = source
+    ? `<p class="pl-src"><a href="${esc(source)}" target="_blank" rel="noopener">Open in Google Maps</a></p>`
+    : "";
 
   const city = cityFor(date);
-  document.getElementById("pltitle").textContent = "Saved spots";
+  document.getElementById("pltitle").textContent = PLACES_TITLE;
   document.getElementById("plsub").textContent =
     `${weekday(date)} ${monthName(date)} ${dayNumber(date)}${city ? " · " + city : ""}`;
   document.getElementById("plbody").innerHTML =
-    `<p class="pl-lede">${esc(state.data.places?.sub || "")}</p>` + cards;
+    `<p class="pl-lede">${esc(state.data.places?.sub || "")}</p>` + link + cards;
   return true;
 }
 
@@ -252,10 +309,11 @@ function renderExtra() {
   const buckets = (p?.buckets || []).filter((b) => placesInBucket(b.key).length);
   if (!buckets.length) return el.classList.add("hidden");
   el.classList.remove("hidden");
+  secState(el, "extra");
 
   el.innerHTML =
-    `<h2>Saved, but not on a day</h2>
-     <p class="sub">The rest of the list, and why each one is sitting here.</p>` +
+    secHead("extra", "Saved, but not on a day") +
+    `<p class="sub">The rest of the list, and why each one is sitting here.</p>` +
     buckets
       .map((b) => {
         const rows = placesInBucket(b.key)
@@ -321,8 +379,9 @@ function renderBoard() {
   const b = state.data.board;
   if (!b || !b.groups || !b.groups.length) return el.classList.add("hidden");
   el.classList.remove("hidden");
+  secState(el, "board");
   el.innerHTML =
-    `<h2>${esc(b.title)}</h2><p class="sub">${esc(b.sub)}</p>` +
+    secHead("board", b.title) + `<p class="sub">${esc(b.sub)}</p>` +
     b.groups
       .map(
         (g) => `<div class="grp"><h3>${esc(g.heading)}</h3>` +
@@ -343,8 +402,9 @@ function renderFoot() {
   const r = state.data.rules;
   if (!r || !r.items || !r.items.length) return el.classList.add("hidden");
   el.classList.remove("hidden");
+  secState(el, "foot");
   el.innerHTML =
-    `<h2>${esc(r.title)}</h2><ul>` +
+    secHead("foot", r.title) + `<ul>` +
     r.items.map((i) => `<li>${rich(i)}</li>`).join("") +
     `</ul>`;
 }
