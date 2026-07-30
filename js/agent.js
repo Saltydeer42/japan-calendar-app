@@ -12,7 +12,14 @@
    ========================================================================== */
 
 import { state } from "./store.js";
-import { eachDate, weekday, dayNumber, eventsOn } from "./render.js";
+import {
+  eachDate,
+  weekday,
+  dayNumber,
+  eventsOn,
+  placesOn,
+  placesInBucket,
+} from "./render.js";
 
 const API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-5";
@@ -79,6 +86,24 @@ function itineraryText() {
       if (e.place) lines.push(`    address: ${e.place}`);
       if (e.note) lines.push(`    note: ${e.note.replace(/<[^>]+>/g, "")}`);
     }
+    const saved = placesOn(date);
+    if (saved.length) {
+      lines.push(
+        `  saved spots nearby, nothing booked: ` +
+          saved.map((p) => `${p.name} (${p.kind}, ${p.area})`).join("; ")
+      );
+    }
+  }
+
+  if (d.places?.items?.length) {
+    lines.push(`\n## Saved spots with no day`);
+    for (const b of d.places.buckets || []) {
+      const list = placesInBucket(b.key);
+      if (!list.length) continue;
+      lines.push(
+        `- ${b.heading}: ` + list.map((p) => `${p.name} (${p.city})`).join("; ")
+      );
+    }
   }
 
   if (d.board?.groups?.length) {
@@ -112,6 +137,8 @@ Right now it is ${nowISO}. All trip times are Japan Standard Time.
 You can answer anything about the itinerary below, and you can PROPOSE changes to it using your tools. You cannot make real reservations — you have no phone, no email and no booking integrations. If something needs an actual booking, say who has to do it (them, or a hotel concierge) and offer to add it to the itinerary as a to-book item.
 
 Your tools only ever propose. A card appears in the chat and the user taps to confirm. So never say "done", "added", or "moved" — say what you're proposing and let the card speak. After calling a tool, keep your reply to a single short line; the card carries the detail.
+
+The saved spots listed under each day are a separate thing from the itinerary: shops, cafes and sights one of them saved, sitting behind a "saved spots" row on that day. Nothing there is booked or timed, and your tools cannot touch them. Use them when someone asks what else is around, and if one deserves a real slot, propose it as a new entry.
 
 # How to write
 Three rules about style, and they are not negotiable.

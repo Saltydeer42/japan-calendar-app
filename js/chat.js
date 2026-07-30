@@ -193,6 +193,20 @@ function setTyping(on) {
   if (on) scrollDown();
 }
 
+/* Called when the panel is put on screen. The thread is rendered once at init,
+   while the panel is still display:none — it has no scroll height at all then,
+   so the scroll to the bottom that render() would like to do is a no-op and the
+   chat opens on the oldest message. It has to be asked for again here, once the
+   panel is actually laid out, which is also the case where the history was
+   already sat in localStorage. */
+export function revealChat() {
+  scrollDown(false);
+  // Reading scrollHeight above forces layout, so that lands on the right row;
+  // one more pass after the first painted frame covers the safe-area insets and
+  // the panel height settling as it slides in.
+  requestAnimationFrame(() => scrollDown(false));
+}
+
 /* -------------------------------------------------------------- viewport -- */
 /* The keyboard is the whole problem here. iOS does not resize the layout
    viewport for it; it shrinks the *visual* viewport and scrolls the document

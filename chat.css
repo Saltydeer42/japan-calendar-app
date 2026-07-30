@@ -81,8 +81,15 @@ body.chatlock .chatfab {
 
 /* --------------------------------------------------------------- thread -- */
 
+/* The thread scrolls on one axis only. Left at `visible`, overflow-x is forced
+   to `auto` by the spec the moment overflow-y is not visible, which is what let
+   the whole conversation slide sideways. Pinning it shut here is the axis
+   constraint; the things that were actually overflowing are fixed at source
+   below (the tail notch, and word breaking inside cards). */
 .thread {
   flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
@@ -145,7 +152,13 @@ body.chatlock .chatfab {
 .msg.them:not(.last) .bubble { border-bottom-left-radius: 6px }
 
 /* The tail — only on the last bubble of a run, drawn as two stacked shapes:
-   a filled curve, then a same-colour-as-page notch that carves it. */
+   a filled curve, then a same-colour-as-page notch that carves it.
+
+   The curve reaches 7px past the bubble and the notch is 10px wide, so the
+   whole tail sits inside the thread's 12px gutter. It used to be a 20px notch,
+   whose outer 13px was white on a white page — invisible, but far enough past
+   the right edge of a sent bubble (which sits flush with the thread's content
+   box) to make the thread scroll sideways. */
 .msg.last .bubble::before,
 .msg.last .bubble::after { content: ""; position: absolute; bottom: 0; height: 19px }
 
@@ -155,7 +168,7 @@ body.chatlock .chatfab {
   border-bottom-left-radius: 16px 14px;
 }
 .msg.me.last .bubble::after {
-  right: -20px; width: 20px;
+  right: -10px; width: 10px;
   background: #fff;
   border-bottom-left-radius: 10px;
 }
@@ -165,7 +178,7 @@ body.chatlock .chatfab {
   border-bottom-right-radius: 16px 14px;
 }
 .msg.them.last .bubble::after {
-  left: -20px; width: 20px;
+  left: -10px; width: 10px;
   background: #fff;
   border-bottom-right-radius: 10px;
 }
@@ -222,10 +235,15 @@ body.chatlock .chatfab {
 
 /* ------------------------------------------------------- proposal cards -- */
 
+/* `max-width` caps the box, not the text: a title or a reason carrying one long
+   unbroken token (a URL, a booking reference) would otherwise run straight out
+   of the card and take the thread's width with it. Breaking anywhere is
+   inherited by every row, so it only needs saying once. */
 .prop {
   background: #fff; border: 1px solid var(--hairline);
   border-radius: 16px; padding: 14px 15px; margin: 7px 0 3px;
   max-width: 320px; box-shadow: 0 2px 10px rgba(0,0,0,.05);
+  overflow-wrap: anywhere;
   animation: pop .3s cubic-bezier(.32,1.4,.5,1);
 }
 .phead { font-size: 15px; font-weight: 600; letter-spacing: -.015em }
@@ -259,6 +277,7 @@ body.chatlock .chatfab {
   background: var(--eat-t); color: #B33127;
   font-size: 13.5px; line-height: 1.45;
   padding: 10px 13px; border-radius: 14px; max-width: 300px;
+  overflow-wrap: anywhere;
 }
 
 /* --------------------------------------------------------------- composer */

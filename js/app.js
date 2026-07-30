@@ -16,9 +16,11 @@ import {
   DEMO,
 } from "./store.js";
 import { renderAll, renderDays, renderStats } from "./render.js";
-import { initDrag, swallowedClick } from "./drag.js";
+import { initDrag, swallowedClick, isDragging } from "./drag.js";
+import { initPager, refresh as refreshPager, nudge as nudgeDay } from "./pager.js";
+import { initPlaces, placesOpen } from "./places.js";
 import { initEditor, openEditor, editorOpen } from "./editor.js";
-import { initChat, lockViewport, unlockViewport } from "./chat.js";
+import { initChat, lockViewport, unlockViewport, revealChat } from "./chat.js";
 import { haptic } from "./haptics.js";
 
 const el = (id) => document.getElementById(id);
@@ -52,14 +54,17 @@ function applyFilter(f) {
   document.querySelectorAll(".entry").forEach((e) =>
     e.classList.toggle("hidden", !matches(e, f))
   );
+  // A day is a whole panel now, so it is never removed from the strip: taking
+  // days out from under a swipe would lose your place in the trip. An empty
+  // day says so instead.
   document.querySelectorAll(".day").forEach((d) => {
     const shown = d.querySelectorAll(".entry:not(.hidden)").length;
-    // With a filter on, an empty day is noise. With no filter it is a target.
-    d.classList.toggle("hidden", f !== "all" && shown === 0);
+    d.querySelector(".entries").classList.toggle("nomatch", f !== "all" && shown === 0);
   });
   document.querySelectorAll(".fbtn").forEach((b) =>
     b.setAttribute("aria-pressed", String(b.dataset.f === f))
   );
+  refreshPager();
 }
 
 /* ----------------------------------------------------------- place sheet - */
@@ -150,7 +155,7 @@ function initSheet() {
 function repaint() {
   renderDays();
   renderStats();
-  applyFilter(filter);
+  applyFilter(filter);   // which puts the pager back on the day it was on
 }
 
 /* ------------------------------------------------------------ sync badge - */
@@ -273,7 +278,19 @@ async function boot() {
     }
   });
 
-  initDrag(el("days"), repaint);
+  // Only one day is on screen at a time, so dragging an entry to the edge has
+  // to turn the page for the drop to be possible at all.
+  initDrag(el("days"), repaint, { onEdge: nudgeDay });
+
+  initPager({
+    blocked: () =>
+      isDragging() ||
+      placesOpen() ||
+      editorOpen() ||
+      el("chat").classList.contains("on") ||
+      el("mapscrim").classList.contains("on"),
+  });
+  initPlaces();
   initSheet();
   initSyncBadge();
   initEditor({
@@ -298,6 +315,8 @@ async function boot() {
     el("fab").classList.add("away");
     el("chatfab").classList.add("away");
     lockViewport();
+    // After lockViewport, which is what gives the panel its final height.
+    revealChat();
     haptic("light");
   };
   const closeChat = () => {

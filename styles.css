@@ -113,17 +113,28 @@ body{
 .sw{width:8px;height:8px;border-radius:50%;flex:none}
 
 /* ---------------- days ---------------- */
-.days{overflow:hidden;margin-bottom:14px}
-.day{display:grid;grid-template-columns:96px 1fr;padding:6px 0}
-.day + .day{border-top:1px solid var(--hairline-soft)}
+/* One day per panel. The card takes the height of the day you are on, and the
+   strip inside it is moved with a transform — see js/pager.js. */
+.pager{overflow:hidden;margin-bottom:12px}
+.pager.animate{transition:height .38s cubic-bezier(.32,.72,0,1)}
+.days{display:flex;align-items:flex-start;touch-action:pan-y;will-change:transform}
+.days.animate{transition:transform .38s cubic-bezier(.32,.72,0,1)}
+.day{flex:0 0 100%;width:100%;min-width:0}
 .day.hidden{display:none}
-.daymark{padding:22px 0 22px 26px}
-.daymark .n{
+
+.dayhead{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
+  padding:22px 26px 15px;border-bottom:1px solid var(--hairline-soft);
+}
+.dayhead .n{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",sans-serif;
   font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1;
 }
-.daymark .d{font-size:12.5px;color:var(--label3);margin-top:4px;font-weight:500}
-.entries{padding:12px 26px 14px 0;display:flex;flex-direction:column;gap:2px}
+.dayhead .d{font-size:12.5px;color:var(--label3);margin-top:4px;font-weight:500}
+.dh-where{text-align:right;min-width:0}
+.dh-city{font-size:14.5px;font-weight:600;letter-spacing:-.016em;line-height:1.3}
+.dh-pos{font-size:11.5px;color:var(--label3);margin-top:3px;font-weight:500}
+.entries{padding:12px 12px 10px;display:flex;flex-direction:column;gap:2px}
 
 .entry{
   display:grid;grid-template-columns:106px minmax(0,1fr);gap:18px;
@@ -212,10 +223,9 @@ body{
   .hero{padding:32px 2px 18px}
   .stats{gap:22px}
   .bar{margin:0 -14px 12px;padding:10px 14px;padding-top:calc(10px + var(--safe-t))}
-  .day{grid-template-columns:66px 1fr}
-  .daymark{padding:18px 0 18px 18px}
-  .daymark .n{font-size:25px}
-  .entries{padding:10px 16px 12px 0}
+  .dayhead{padding:18px 18px 13px}
+  .dayhead .n{font-size:25px}
+  .entries{padding:10px 6px 8px}
   .entry{grid-template-columns:1fr;gap:8px;padding:13px 14px}
   .meta{flex-direction:row;align-items:center;gap:10px}
   .row{grid-template-columns:1fr;gap:8px}
@@ -456,13 +466,154 @@ body{
   animation:dropin .16s ease;
 }
 @keyframes dropin{from{opacity:0;transform:scaleX(.7)}to{opacity:1;transform:none}}
-.day.droptarget{background:rgba(0,113,227,.035)}
-.day.droptarget .daymark .n{color:var(--travel)}
+.day.droptarget .entries{background:rgba(0,113,227,.035)}
+.day.droptarget .dayhead .n{color:var(--travel)}
 body.dragging{cursor:grabbing}
 body.dragging .entry{transition:none}
 .entries.empty{min-height:52px;justify-content:center}
 .emptyday{
   font-size:13px;color:var(--label3);padding:10px 16px;font-style:normal;
+}
+.entries.nomatch::after{
+  content:"Nothing on this day matches that filter";
+  display:block;font-size:13px;color:var(--label3);padding:10px 16px;
+}
+
+/* ---------------- day navigation ---------------- */
+.daynav{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin:0 0 12px;padding:0 2px;
+}
+.dn-arrow{
+  width:32px;height:32px;flex:none;border:0;border-radius:50%;cursor:pointer;
+  background:rgba(0,0,0,.045);color:var(--label2);display:grid;place-items:center;
+}
+.dn-arrow svg{width:15px;height:15px}
+.dn-arrow:hover{background:rgba(0,0,0,.075);color:var(--label)}
+.dn-arrow:disabled{opacity:.28;cursor:default;background:rgba(0,0,0,.045);color:var(--label2)}
+.dots{display:flex;justify-content:center;align-items:center;gap:0;min-width:0}
+/* The visible dot is small; the button around it is thumb-sized. */
+.dot{
+  width:18px;height:20px;padding:0;border:0;background:none;cursor:pointer;
+  display:grid;place-items:center;
+}
+.dot::after{
+  content:"";width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.18);
+  transition:background .2s ease,transform .2s cubic-bezier(.32,.72,0,1);
+}
+.dot:hover::after{background:rgba(0,0,0,.34)}
+.dot.on::after{background:var(--label);transform:scale(1.4)}
+
+/* ---------------- saved spots, the day row ---------------- */
+.savedrow{
+  display:flex;align-items:center;gap:12px;width:100%;
+  font:inherit;text-align:left;color:var(--label);
+  background:none;border:0;border-top:1px solid var(--hairline-soft);
+  padding:14px 22px;cursor:pointer;
+}
+.savedrow:hover{background:var(--shop-t)}
+.savedrow:focus-visible{outline:2px solid var(--travel);outline-offset:-2px}
+.sv-n{
+  width:24px;height:24px;flex:none;border-radius:50%;display:grid;place-items:center;
+  background:var(--shop-t);color:var(--shop);font-size:11.5px;font-weight:600;
+}
+.sv-main{flex:1;min-width:0}
+.sv-t{display:block;font-size:15px;font-weight:600;letter-spacing:-.016em}
+.sv-s{
+  display:block;font-size:12.5px;color:var(--label3);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.savedrow::after{
+  content:"";width:7px;height:7px;flex:none;opacity:.5;
+  border-right:1.6px solid var(--label3);border-bottom:1.6px solid var(--label3);
+  transform:rotate(-45deg);
+}
+
+/* ---------------- saved spots, the page ---------------- */
+.places{
+  position:fixed;inset:0;z-index:140;display:none;flex-direction:column;
+  background:var(--bg);
+}
+.places.on{display:flex;animation:placein .3s cubic-bezier(.32,.72,0,1)}
+@keyframes placein{from{transform:translateX(100%)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.places.on{animation:none}}
+body.placeson .fab,body.placeson .chatfab{visibility:hidden}
+
+.pl-head{
+  flex:none;display:flex;align-items:center;gap:10px;
+  padding:calc(10px + var(--safe-t)) 12px 10px;
+  background:rgba(245,245,247,.82);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--hairline-soft);
+}
+.pl-back{
+  font:inherit;font-size:17px;font-weight:500;background:none;border:0;
+  color:var(--travel);cursor:pointer;padding:4px 6px;
+  display:flex;align-items:center;gap:2px;flex:none;
+}
+.pl-back svg{width:18px;height:18px}
+.pl-who{flex:1;text-align:center;min-width:0}
+.pl-who b{display:block;font-size:15.5px;font-weight:600;letter-spacing:-.016em}
+.pl-who span{font-size:11.5px;color:var(--label3)}
+.pl-pad{width:62px;flex:none}
+.pl-body{
+  flex:1;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:16px 14px calc(30px + var(--safe-b));
+  max-width:640px;width:100%;margin:0 auto;
+}
+.pl-lede{margin:0 4px 14px;font-size:12.5px;color:var(--label3);line-height:1.5}
+
+.pcard{
+  background:var(--surface);border:1px solid var(--hairline-soft);
+  border-radius:14px;padding:15px 17px;
+}
+.pcard + .pcard{margin-top:10px}
+.pc-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px}
+.pc-head h3{
+  font-size:16px;font-weight:600;letter-spacing:-.018em;line-height:1.35;margin:0;
+  overflow-wrap:break-word;
+}
+.pc-kind{
+  font-size:11px;font-weight:600;color:var(--c,var(--label3));flex:none;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;padding-top:2px;
+}
+.pc-kind::before{
+  content:"";width:6px;height:6px;border-radius:50%;flex:none;
+  background:var(--c,var(--label3));
+}
+.pc-where{margin:5px 0 0;font-size:13px;color:var(--label2);letter-spacing:-.006em}
+.pc-flags{margin:10px 0 0}
+.pc-flags .pill{margin-left:0;margin-right:6px}
+.pc-note{margin:9px 0 0;font-size:13.5px;color:var(--label2);line-height:1.5;
+  letter-spacing:-.006em}
+.pc-map{
+  display:inline-flex;align-items:center;gap:5px;margin-top:12px;
+  font-size:13.5px;font-weight:500;color:var(--travel);text-decoration:none;
+}
+.pc-map::after{
+  content:"";width:5px;height:5px;
+  border-right:1.6px solid currentColor;border-top:1.6px solid currentColor;
+  transform:rotate(45deg);
+}
+.pill.shut{background:var(--eat-t);color:#B33127}
+
+/* ---------------- saved, but not on a day ---------------- */
+.extra{overflow:hidden;margin-bottom:14px}
+.extra > h2{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",sans-serif;
+  font-size:22px;font-weight:600;letter-spacing:-.025em;margin:0;padding:26px 28px 4px;
+}
+.extra > .sub{padding:0 28px 18px;color:var(--label2);font-size:14.5px;margin:0}
+.extra .what a{color:inherit;text-decoration:none}
+.extra .what a:hover{color:var(--travel)}
+@media (max-width:680px){
+  .extra > h2,.extra > .sub,.extra .grp{padding-left:20px;padding-right:20px}
+  .savedrow{padding:14px 18px}
+  /* Seventeen dots and two arrows have to fit one line on a phone. */
+  .daynav{gap:6px}
+  .dot{width:15px;height:18px}
 }
 
 /* ---------------- setup / token screen ---------------- */

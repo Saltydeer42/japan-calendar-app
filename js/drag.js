@@ -16,11 +16,13 @@ import { eventsOn } from "./render.js";
 const HOLD_MS = 380;      // long enough not to fire while scrolling
 const SLOP = 10;          // px of movement that cancels the hold
 const EDGE = 96;          // autoscroll zone at top and bottom
+const SIDE = 44;          // page-turn zone at left and right
 const SPEED = 14;
 
 let hold = null;          // pending hold timer
 let drag = null;          // live drag
 let suppressClick = 0;    // ignore the click that follows a drop
+let onEdge = null;        // turns the day page when held at the side
 
 export function isDragging() {
   return !!drag;
@@ -32,7 +34,9 @@ export function swallowedClick() {
 
 /* ------------------------------------------------------------------------ */
 
-export function initDrag(root, onMoved) {
+export function initDrag(root, onMoved, options = {}) {
+  onEdge = options.onEdge || null;
+
   root.addEventListener("pointerdown", (ev) => {
     if (ev.button != null && ev.button !== 0) return;
     const entry = ev.target.closest(".entry");
@@ -198,6 +202,15 @@ function tick() {
     window.scrollBy(0, dy);
     hit(drag.x, drag.y);
   }
+
+  // Held against a side, the day underneath turns, which is the only way to
+  // reach another day now that they are panels rather than a list.
+  if (onEdge) {
+    const w = window.innerWidth;
+    if (drag.x < SIDE) onEdge(-1);
+    else if (drag.x > w - SIDE) onEdge(1);
+  }
+
   drag.raf = requestAnimationFrame(tick);
 }
 

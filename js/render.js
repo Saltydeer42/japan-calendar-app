@@ -8,6 +8,8 @@
 import { state } from "./store.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /* ------------------------------------------------------------- escaping -- */
 
@@ -48,10 +50,48 @@ export function weekday(iso) {
   return WEEKDAYS[new Date(iso + "T12:00:00").getDay()];
 }
 
+export function monthName(iso) {
+  return MONTHS[Number(iso.slice(5, 7)) - 1];
+}
+
+/** Where you are that day. Later ranges win, which is how the Nara and Fuji
+ *  day trips override the leg they sit inside. */
+export function cityFor(date) {
+  let name = "";
+  for (const c of state.data.cities || []) {
+    if (date >= c.start && date <= c.end) name = c.name;
+  }
+  return name;
+}
+
 export function eventsOn(date) {
   return state.data.events
     .filter((e) => e.date === date)
     .sort((a, b) => a.sort - b.sort);
+}
+
+/* --------------------------------------------------------------- places -- */
+// Saved spots are not events: nothing is booked, nothing has a time, and they
+// never take part in drag or in the ICS. They hang off a day, or off a bucket.
+
+export function allPlaces() {
+  return state.data.places?.items || [];
+}
+
+export function placesOn(date) {
+  return allPlaces().filter((p) => p.date === date);
+}
+
+export function placesInBucket(key) {
+  return allPlaces().filter((p) => !p.date && p.bucket === key);
+}
+
+export function mapsQuery(p) {
+  return p.query || [p.name, p.city].filter(Boolean).join(", ");
+}
+
+export function mapsUrl(p) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery(p))}`;
 }
 
 /* ---------------------------------------------------------------- parts -- */
@@ -78,25 +118,131 @@ export function entryHtml(e) {
 </div>`;
 }
 
-function dayHtml(date) {
+/** One line on the day panel standing in for every saved spot on it. Tapping it
+ *  opens the list; keeping them off the day itself is the point. */
+function savedRowHtml(date) {
+  const list = placesOn(date);
+  if (!list.length) return "";
+
+  const areas = [...new Set(list.map((p) => p.area).filter(Boolean))];
+  const sub = areas.slice(0, 3).join(" · ") + (areas.length > 3 ? " …" : "");
+
+  return `<button class="savedrow" data-date="${date}"
+  aria-label="Saved spots for this day, ${list.length}">
+  <span class="sv-n">${list.length}</span>
+  <span class="sv-main"><span class="sv-t">Saved spots</span><span class="sv-s">${esc(sub)}</span></span>
+</button>`;
+}
+
+function dayHtml(date, i, all) {
   const list = eventsOn(date);
   const inner = list.length
     ? list.map(entryHtml).join("")
     : `<div class="emptyday">Nothing here yet</div>`;
+  const city = cityFor(date);
 
-  return `<div class="day" data-date="${date}">
-  <div class="daymark"><div class="n">${dayNumber(date)}</div><div class="d">${weekday(date)}</div></div>
+  return `<section class="day" data-date="${date}" data-i="${i}"
+  role="group" aria-roledescription="day" aria-label="${weekday(date)} ${monthName(date)} ${dayNumber(date)}${city ? ", " + esc(city) : ""}">
+  <header class="dayhead">
+    <div class="dh-when">
+      <div class="n">${dayNumber(date)}</div>
+      <div class="d">${weekday(date)} · ${monthName(date)}</div>
+    </div>
+    <div class="dh-where">
+      <div class="dh-city">${esc(city)}</div>
+      <div class="dh-pos">Day ${i + 1} of ${all.length}</div>
+    </div>
+  </header>
   <div class="entries${list.length ? "" : " empty"}" data-date="${date}">${inner}</div>
-</div>`;
+  ${savedRowHtml(date)}
+</section>`;
 }
 
 /* --------------------------------------------------------------- render -- */
 
 export function renderDays() {
   const d = state.data;
-  document.getElementById("days").innerHTML = eachDate(d.trip.start, d.trip.end)
-    .map(dayHtml)
+  const dates = eachDate(d.trip.start, d.trip.end);
+  document.getElementById("days").innerHTML = dates.map(dayHtml).join("");
+  renderDots(dates);
+}
+
+function renderDots(dates) {
+  const dots = document.getElementById("daydots");
+  if (!dots) return;
+  dots.innerHTML = dates
+    .map(
+      (date, i) =>
+        `<button class="dot" data-i="${i}" data-date="${date}" role="tab"
+      aria-label="${weekday(date)} ${monthName(date)} ${dayNumber(date)}"></button>`
+    )
     .join("");
+}
+
+/* -------------------------------------------------------- saved spot list - */
+
+function placeCard(p) {
+  const flags = [];
+  if (p.closed === "temporarily") flags.push(`<span class="pill pend">Temporarily closed</span>`);
+  if (p.closed === "permanently") flags.push(`<span class="pill shut">Do not go, closed for good</span>`);
+  if (p.tentative) flags.push(`<span class="pill">Unconfirmed</span>`);
+
+  const where = [p.area, p.city].filter(Boolean).join(" · ");
+  const note = p.note ? `<p class="pc-note">${rich(p.note)}</p>` : "";
+
+  return `<article class="pcard e-${esc(p.cat)}">
+  <div class="pc-head">
+    <h3>${esc(p.name)}</h3>
+    <span class="pc-kind">${esc(p.kind)}</span>
+  </div>
+  <p class="pc-where">${esc(where)}</p>
+  ${flags.length ? `<p class="pc-flags">${flags.join(" ")}</p>` : ""}
+  ${note}
+  <a class="pc-map" href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">Open in Google Maps</a>
+</article>`;
+}
+
+/** The saved-spots page for one day. Returns false if there is nothing on it. */
+export function renderPlacesPage(date) {
+  const list = placesOn(date);
+  if (!list.length) return false;
+
+  const city = cityFor(date);
+  document.getElementById("pltitle").textContent = "Saved spots";
+  document.getElementById("plsub").textContent =
+    `${weekday(date)} ${monthName(date)} ${dayNumber(date)}${city ? " · " + city : ""}`;
+  document.getElementById("plbody").innerHTML =
+    `<p class="pl-lede">${esc(state.data.places?.sub || "")}</p>` +
+    list.map(placeCard).join("");
+  return true;
+}
+
+/** Everything saved that never landed on a day, with the reason why. */
+function renderExtra() {
+  const el = document.getElementById("extra");
+  const p = state.data.places;
+  if (!el) return;
+  const buckets = (p?.buckets || []).filter((b) => placesInBucket(b.key).length);
+  if (!buckets.length) return el.classList.add("hidden");
+  el.classList.remove("hidden");
+
+  el.innerHTML =
+    `<h2>Saved, but not on a day</h2>
+     <p class="sub">The rest of the list, and why each one is sitting here.</p>` +
+    buckets
+      .map((b) => {
+        const rows = placesInBucket(b.key)
+          .map((place) => {
+            const where = [place.area, place.city].filter(Boolean).join(" · ");
+            const why = place.note ? `${where}. ${place.note}` : where;
+            return `<div class="row"><span class="st ${esc(b.status)}">${esc(b.label)}</span><div>
+        <div class="what"><a href="${esc(mapsUrl(place))}" target="_blank" rel="noopener">${esc(place.name)}</a></div>
+        <div class="why">${rich(why)}</div></div></div>`;
+          })
+          .join("");
+        return `<div class="grp"><h3>${esc(b.heading)}</h3>${rows}</div>`;
+      })
+      .join("");
 }
 
 export function renderStats() {
@@ -184,5 +330,6 @@ export function renderAll() {
   renderLegs();
   renderDays();
   renderBoard();
+  renderExtra();
   renderFoot();
 }

@@ -21,6 +21,10 @@ export const DEMO_DOC = {
     { name: "Somewhere", meta: "Aug 14 to 16", color: "#0071E3" },
     { name: "Somewhere else", meta: "Aug 16 to 17", color: "#17876C" },
   ],
+  cities: [
+    { start: "2026-08-14", end: "2026-08-15", name: "First city" },
+    { start: "2026-08-16", end: "2026-08-17", name: "Second city" },
+  ],
   events: [
     {
       id: "demo-1", date: "2026-08-14", sort: 1000, cat: "travel",
@@ -55,6 +59,26 @@ export const DEMO_DOC = {
       place: "", label: "", pills: [{ text: "Not booked", style: "pend" }],
     },
   ],
+  places: {
+    title: "Saved spots",
+    sub: "A sample list of places, none of them booked.",
+    buckets: [
+      { key: "no-day", heading: "No day for these yet", status: "you", label: "No slot" },
+    ],
+    items: [
+      { id: "demo-p1", name: "Sample coffee", cat: "drink", kind: "Coffee",
+        area: "Sample ward", city: "Tokyo", date: "2026-08-15",
+        note: "A sample saved spot. Tap the row on the day to get here." },
+      { id: "demo-p2", name: "Sample shop", cat: "shop", kind: "Vintage",
+        area: "Sample ward", city: "Tokyo", date: "2026-08-15" },
+      { id: "demo-p3", name: "Sample garden", cat: "see", kind: "Garden",
+        area: "Another ward", city: "Tokyo", date: "2026-08-16", tentative: true,
+        note: "Marked unconfirmed, because the area is a guess." },
+      { id: "demo-p4", name: "Sample far-away thing", cat: "see", kind: "Museum",
+        area: "Miles away", city: "Elsewhere", bucket: "no-day",
+        note: "Saved, but nowhere near this trip." },
+    ],
+  },
   board: {
     title: "Needs booking",
     sub: "A sample board.",

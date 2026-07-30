@@ -84,13 +84,46 @@
     </div>
   </nav>
 
-  <section class="days card" id="days"></section>
+  <!-- one day per panel, swiped left and right -->
+  <nav class="daynav" id="daynav" aria-label="Move between days">
+    <button class="dn-arrow" id="dayprev" aria-label="Previous day">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="dots" id="daydots" role="tablist"></div>
+    <button class="dn-arrow" id="daynext" aria-label="Next day">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </nav>
+
+  <section class="pager card" id="pager" aria-label="The trip, a day at a time">
+    <div class="days" id="days"></div>
+  </section>
 
   <section class="board card hidden" id="board"></section>
+
+  <section class="extra card hidden" id="extra"></section>
 
   <section class="foot card hidden" id="foot"></section>
 
 </div>
+
+<!-- ======================= saved spots ======================= -->
+<section class="places" id="places" role="dialog" aria-modal="true" aria-labelledby="pltitle">
+  <header class="pl-head">
+    <button class="pl-back" id="plback">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      Day
+    </button>
+    <div class="pl-who">
+      <b id="pltitle">Saved spots</b><span id="plsub"></span>
+    </div>
+    <span class="pl-pad"></span>
+  </header>
+  <div class="pl-body" id="plbody"></div>
+</section>
 
 <!-- ======================= add button ======================= -->
 <button class="fab hidden" id="fab" aria-label="Add an event">
